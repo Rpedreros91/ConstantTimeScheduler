@@ -1,0 +1,156 @@
+import java.util.*;
+
+class Process {
+    int pid;
+    int arrivalTime;
+    int burstTime;
+    int deadline;
+    int remainingTime;
+    int completionTime;
+    boolean finished;
+
+    public Process(int pid, int arrivalTime, int burstTime, int deadline) {
+        this.pid = pid;
+        this.arrivalTime = arrivalTime;
+        this.burstTime = burstTime;
+        this.deadline = deadline;
+        this.remainingTime = burstTime;
+        this.completionTime = -1;
+        this.finished = false;
+    }
+
+    public int urgency(int currentTime) {
+        return deadline - currentTime - remainingTime;
+    }
+
+    public int getPriorityLevel(int currentTime) {
+        int u = urgency(currentTime);
+
+        if (u <= 5) {
+            return 0; // high priority
+        } else if (u <= 15) {
+            return 1; // medium priority
+        } else {
+            return 2; // low priority
+        }
+    }
+
+    @Override
+    public String toString() {
+        return "P" + pid +
+                " [arrival=" + arrivalTime +
+                ", runtime=" + burstTime +
+                ", deadline=" + deadline +
+                ", completion=" + completionTime + "]";
+    }
+}
+
+public class ConstantTimeScheduler {
+
+    public static void main(String[] args) {
+        List<Process> processes = generateDefaultProcesses(100);
+
+        System.out.println("Preemptive Constant Time Scheduling Simulation");
+        System.out.println("--------------------------------------------------");
+
+        runScheduler(processes);
+
+        System.out.println("\nFinal Completion Report");
+        System.out.println("--------------------------------------------------");
+        for (Process p : processes) {
+            System.out.println(p);
+        }
+    }
+
+    public static List<Process> generateDefaultProcesses(int totalProcesses) {
+        List<Process> processes = new ArrayList<>();
+
+        int[] burstCycle = {5,10,15,20,25,30,35,40,45,50};
+        int[] deadlineCycle = {10,20,30,40,50,60,70,80,90,100};
+
+        for (int i = 0; i < totalProcesses; i++) {
+            int arrivalTime = (i / 10) * 5;
+            int burstTime = burstCycle[i % 10];
+            int deadline = arrivalTime + deadlineCycle[i % 10];
+
+            processes.add(new Process(i, arrivalTime, burstTime, deadline));
+        }
+
+        return processes;
+    }
+
+    public static void runScheduler(List<Process> processes) {
+
+        Queue<Process> high = new LinkedList<>();
+        Queue<Process> medium = new LinkedList<>();
+        Queue<Process> low = new LinkedList<>();
+
+        int currentTime = 0;
+        int completed = 0;
+        int n = processes.size();
+
+        while (completed < n) {
+
+            for (Process p : processes) {
+                if (!p.finished && p.arrivalTime == currentTime) {
+                    addToQueue(p, currentTime, high, medium, low);
+                }
+            }
+
+            Process current = getNextProcess(high, medium, low);
+
+            if (current == null) {
+                currentTime++;
+                continue;
+            }
+
+            System.out.println("Time " + currentTime + ": Running P" + current.pid);
+
+            current.remainingTime--;
+            currentTime++;
+
+            if (current.remainingTime == 0) {
+                current.finished = true;
+                current.completionTime = currentTime;
+                completed++;
+
+                System.out.println("Time " + currentTime + ": P" + current.pid + " completed");
+            } else {
+                addToQueue(current, currentTime, high, medium, low);
+            }
+        }
+    }
+
+    public static void addToQueue(Process p, int currentTime,
+                                  Queue<Process> high,
+                                  Queue<Process> medium,
+                                  Queue<Process> low) {
+
+        int priority = p.getPriorityLevel(currentTime);
+
+        if (priority == 0) {
+            high.offer(p);
+        } else if (priority == 1) {
+            medium.offer(p);
+        } else {
+            low.offer(p);
+        }
+    }
+
+    public static Process getNextProcess(Queue<Process> high,
+                                         Queue<Process> medium,
+                                         Queue<Process> low) {
+
+        if (!high.isEmpty()) {
+            return high.poll();
+        }
+        if (!medium.isEmpty()) {
+            return medium.poll();
+        }
+        if (!low.isEmpty()) {
+            return low.poll();
+        }
+
+        return null;
+    }
+}
